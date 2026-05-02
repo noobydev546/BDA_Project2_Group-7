@@ -12,7 +12,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmb
 # 1. Page Configuration
 st.set_page_config(page_title="MLii Ebook Fund Q&A", page_icon="📖")
 st.title("📚 MLii Ebook Fund Q&A Assistant")
-st.markdown("### BDA_Project2_yourGroupNo")
+st.markdown("### BDA_Project2_Group 7")
 st.markdown("""
 **List of Members:**
 - [6631501154] [Tanakorn Siriwongpaisal]
