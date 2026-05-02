@@ -1,4 +1,5 @@
 langchain
+langchain.chains
 langchain-community
 langchain-core
 langchain-text-splitters
