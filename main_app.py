@@ -34,7 +34,6 @@ else:
 # 3. Create RAG Pipeline
 @st.cache_resource
 def load_rag_pipeline():
-    # Load files from the dataset folder (including subfolders)
     docs = []
     pdf_files = glob.glob("dataset/**/*.pdf", recursive=True)
     docx_files = glob.glob("dataset/**/*.docx", recursive=True)
@@ -55,21 +54,16 @@ def load_rag_pipeline():
         except Exception as e:
             st.error(f"Error loading {file}: {e}")
 
-    # Split text into chunks
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     splits = text_splitter.split_documents(docs)
 
-    # Use HuggingFace Embeddings (Local model, bypasses Google API limits/errors)
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     
-    # Create Vector Store
     vectorstore = FAISS.from_documents(splits, embeddings)
     retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 
-    # Use Gemini 1.5 Flash for the LLM
     llm = ChatGoogleGenerativeAI(model="models/gemini-1.5-flash", temperature=0.3)
 
-    # System prompt with strict English constraints
     system_prompt = (
         "You are a helpful and knowledgeable assistant for the MLii Ebook Fund. "
         "Use the following pieces of retrieved context to answer the user's question. "
@@ -88,26 +82,59 @@ def load_rag_pipeline():
     return create_retrieval_chain(retriever, qa_chain)
 
 # 4. Load the system
-with st.spinner('Preparing AI & Documents... This may take a moment on first run as it downloads the embedding model.'):
+with st.spinner('Preparing AI & Documents... This may take a moment on first run.'):
     try:
         rag_chain = load_rag_pipeline()
     except Exception as e:
         st.error(f"Failed to initialize RAG pipeline: {e}")
         st.stop()
 
-# 5. Chat UI
+# 5. Example Questions Section
+st.markdown("#### 💡 Example Questions:")
+examples = [
+    "What is the MLii Ebook Fund?",
+    "Who is eligible to apply for this fund?",
+    "What documents are required for the application?"
+]
+
+# Create a button for the sample question
+col1, col2, col3 = st.columns(3)
+with col1:
+    if st.button(examples[0], use_container_width=True):
+        st.session_state.example_selected = examples[0]
+with col2:
+    if st.button(examples[1], use_container_width=True):
+        st.session_state.example_selected = examples[1]
+with col3:
+    if st.button(examples[2], use_container_width=True):
+        st.session_state.example_selected = examples[2]
+
+st.divider()
+
+# 6. Chat UI
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# Show chat history
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-if user_input := st.chat_input("Ask anything about the MLii Ebook Fund here..."):
+# Handle input (receive from the typing field or from the Example button).
+user_input = st.chat_input("Ask anything about the MLii Ebook Fund here...")
+
+# If the user presses the Example button, use that value instead.
+if "example_selected" in st.session_state:
+    user_input = st.session_state.example_selected
+    del st.session_state.example_selected # Delete the value after it's been used to prevent it from being used repeatedly.ำ
+
+if user_input:
+    # 1. Show user questions
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
         st.markdown(user_input)
 
+    # 2. Process and display the answer from the AI.
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
             try:
