@@ -54,7 +54,7 @@ def load_rag_pipeline():
     retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 
     # Use Gemini 1.5 Flash (Fast and efficient)
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.3)
+    llm = ChatGoogleGenerativeAI(model="models/gemini-1.5-flash", temperature=0.3)
 
     # System prompt with strict English constraints
     system_prompt = (
