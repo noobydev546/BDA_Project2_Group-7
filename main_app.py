@@ -31,6 +31,13 @@ else:
     st.error("Please configure GOOGLE_API_KEY in Streamlit secrets!")
     st.stop()
 
+# --- วางโค้ดนี้เพื่อเช็กชื่อโมเดลที่แท้จริง ---
+import google.generativeai as genai
+genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
+available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+st.info(f"🔍 โมเดล LLM ที่ API Key ของคุณใช้ได้คือ: {available_models}")
+# ----------------------------------------
+
 # 3. Create RAG Pipeline
 @st.cache_resource
 def load_rag_pipeline():
