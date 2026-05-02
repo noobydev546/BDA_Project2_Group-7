@@ -7,7 +7,8 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_retrieval_chain
-from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
 # 1. Page Configuration
 st.set_page_config(page_title="MLii Ebook Fund Q&A", page_icon="📖")
@@ -58,15 +59,14 @@ def load_rag_pipeline():
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     splits = text_splitter.split_documents(docs)
 
-    # Use Google Embeddings API (v1 Stable)
-    # Changed to text-embedding-004 to avoid v1beta issues
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+    # Use HuggingFace Embeddings (Local model, bypasses Google API limits/errors)
+    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     
     # Create Vector Store
     vectorstore = FAISS.from_documents(splits, embeddings)
     retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 
-    # Use Gemini 1.5 Flash
+    # Use Gemini 1.5 Flash for the LLM
     llm = ChatGoogleGenerativeAI(model="models/gemini-1.5-flash", temperature=0.3)
 
     # System prompt with strict English constraints
@@ -88,7 +88,7 @@ def load_rag_pipeline():
     return create_retrieval_chain(retriever, qa_chain)
 
 # 4. Load the system
-with st.spinner('Preparing AI & Documents... This may take a moment on first run.'):
+with st.spinner('Preparing AI & Documents... This may take a moment on first run as it downloads the embedding model.'):
     try:
         rag_chain = load_rag_pipeline()
     except Exception as e:
