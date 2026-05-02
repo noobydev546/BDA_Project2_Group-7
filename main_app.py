@@ -15,9 +15,11 @@ st.title("📚 MLii Ebook Fund Q&A Assistant")
 st.markdown("### BDA_Project2_yourGroupNo")
 st.markdown("""
 **List of Members:**
-- [Student ID] [Student Name]
-- [Student ID] [Student Name]
-- [Student ID] [Student Name]
+- [6631501154] [Tanakorn Siriwongpaisal]
+- [6631501160] [Burin Pattanachote]
+- [6631501165] [Pattaphon Suriyacum]
+- [6631501170] [Sitthichot Khuaenkhamsaen]
+- [6631501189] [Phyo Thant Kyaw]
 """)
 st.divider()
 
