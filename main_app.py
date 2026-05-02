@@ -6,7 +6,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain.chains.retrieval import create_retrieval_chain
+from langchain.chains import create_retrieval_chain
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 
 # 1. Page Configuration
@@ -24,7 +24,6 @@ st.markdown("""
 st.divider()
 
 # 2. Load API Key from Streamlit Secrets
-# (When deploying to Streamlit Cloud, this key must be configured in the app settings)
 if "GOOGLE_API_KEY" in st.secrets:
     os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
 else:
@@ -34,26 +33,40 @@ else:
 # 3. Create RAG Pipeline
 @st.cache_resource
 def load_rag_pipeline():
-    # Load files (Make sure the path matches your GitHub repository)
+    # Load files from the dataset folder (including subfolders)
     docs = []
     pdf_files = glob.glob("dataset/**/*.pdf", recursive=True)
     docx_files = glob.glob("dataset/**/*.docx", recursive=True)
     
+    if not pdf_files and not docx_files:
+        st.warning("No documents found in 'dataset' folder. Please upload PDF or DOCX files to GitHub.")
+        st.stop()
+
     for file in pdf_files:
-        docs.extend(PyPDFLoader(file).load())
+        try:
+            docs.extend(PyPDFLoader(file).load())
+        except Exception as e:
+            st.error(f"Error loading {file}: {e}")
+            
     for file in docx_files:
-        docs.extend(Docx2txtLoader(file).load())
+        try:
+            docs.extend(Docx2txtLoader(file).load())
+        except Exception as e:
+            st.error(f"Error loading {file}: {e}")
 
     # Split text into chunks
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     splits = text_splitter.split_documents(docs)
 
-    # Use Google Embeddings API (Lightweight, saves memory)
-    embeddings = GoogleGenerativeAIEmbeddings(model="text-embedding-004")
+    # Use Google Embeddings API (v1 Stable)
+    # Changed to text-embedding-004 to avoid v1beta issues
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+    
+    # Create Vector Store
     vectorstore = FAISS.from_documents(splits, embeddings)
     retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 
-    # Use Gemini 1.5 Flash (Fast and efficient)
+    # Use Gemini 1.5 Flash
     llm = ChatGoogleGenerativeAI(model="models/gemini-1.5-flash", temperature=0.3)
 
     # System prompt with strict English constraints
@@ -75,8 +88,12 @@ def load_rag_pipeline():
     return create_retrieval_chain(retriever, qa_chain)
 
 # 4. Load the system
-with st.spinner('Preparing AI & Documents...'):
-    rag_chain = load_rag_pipeline()
+with st.spinner('Preparing AI & Documents... This may take a moment on first run.'):
+    try:
+        rag_chain = load_rag_pipeline()
+    except Exception as e:
+        st.error(f"Failed to initialize RAG pipeline: {e}")
+        st.stop()
 
 # 5. Chat UI
 if "messages" not in st.session_state:
@@ -93,7 +110,10 @@ if user_input := st.chat_input("Ask anything about the MLii Ebook Fund here...")
 
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            response = rag_chain.invoke({"input": user_input})
-            answer = response['answer']
-            st.markdown(answer)
-    st.session_state.messages.append({"role": "assistant", "content": answer})
+            try:
+                response = rag_chain.invoke({"input": user_input})
+                answer = response['answer']
+                st.markdown(answer)
+                st.session_state.messages.append({"role": "assistant", "content": answer})
+            except Exception as e:
+                st.error(f"Error generating response: {e}")
